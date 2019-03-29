@@ -23,6 +23,6 @@ setup(
         'Topic :: Internet :: WWW/HTTP :: Dynamic Content',
     ],
     install_requires=[
-        'mozilla-django-oidc',
+        'mozilla-django-oidc==1.2.1',
     ],
 )
