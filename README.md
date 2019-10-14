@@ -26,7 +26,7 @@ the following config but you are free to do whatever you want:
 We will also install some prerequisites:
 
     $ pip install django
-    $ pip install git+https://git.pleaseignore.com/sharad/django-ssodotte.git
+    $ pip install git+https://cicd.pleaseignore.com/test-it/django-ssodotte.git
 
 ### Creating a Django project
 
