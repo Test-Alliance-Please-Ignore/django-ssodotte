@@ -14,7 +14,7 @@ class SsodotteBackend(OIDCAuthenticationBackend):
     def verify_claims(self, claims):
         """Verify the provided claims to decide if authentication should be allowed."""
 
-        scopes = import_from_settings('OIDC_RP_SCOPES', 'openid sub')
+        scopes = import_from_settings('OIDC_RP_SCOPES', 'openid')
 
         # yes, we really are checking against a string two lines above, since the setting is not set
         if 'sub' in scopes.split():
