@@ -34,57 +34,14 @@ class SsodotteBackend(OIDCAuthenticationBackend):
 
     def get_username(self, claims):
         # this method is only used in create_user, but we overrode that, so it should be unused.
-        raise Exception('This should not have been called, something went wrong. mozilla-django-oidc probably updated and broke something')
+        raise Exception(
+            'This should not have been called, something went wrong. mozilla-django-oidc probably updated and broke something')
 
-    def authenticate(self, request, **kwargs):
-        """Authenticates a user based on the OIDC code flow."""
-        LOGGER.debug('authenticating')
-
-        self.request = request
-        if not self.request:
-            return None
-
-        state = self.request.GET.get('state')
-        code = self.request.GET.get('code')
-        nonce = kwargs.pop('nonce', None)
-
-        if not code or not state:
-            return None
-
-        reverse_url = import_from_settings('OIDC_AUTHENTICATION_CALLBACK_URL',
-                                           'oidc_authentication_callback')
-
-        token_payload = {
-            'client_id': self.OIDC_RP_CLIENT_ID,
-            'client_secret': self.OIDC_RP_CLIENT_SECRET,
-            'grant_type': 'authorization_code',
-            'code': code,
-            'redirect_uri': absolutify(
-                self.request,
-                reverse(reverse_url)
-            ),
-        }
-
-        # Get the token
-        token_info = get_tokens(token_payload)
-        id_token = token_info.get('id_token')
-        access_token = token_info.get('access_token')
-
-        # Validate the token
-        payload = self.verify_token(id_token, nonce=nonce)
-
-        if payload:
-            store_tokens(self.request.session, token_info)
-            try:
-                return self.get_or_create_user(access_token, id_token, payload)
-            except SuspiciousOperation as exc:
-                LOGGER.warning('failed to get or create user: %s', exc)
-                return None
-
-        return None
+    def get_token(self, payload):
+        return get_tokens(self.request.session, payload)
 
 
-def get_tokens(payload):
+def get_tokens(session, payload):
     """Return token object as a dictionary."""
 
     auth = None
@@ -102,14 +59,12 @@ def get_tokens(payload):
         auth=auth,
         verify=import_from_settings('OIDC_VERIFY_SSL', True))
     response.raise_for_status()
-    return response.json()
-
-
-def store_tokens(session, token_info):
-    """Store OIDC tokens."""
+    token_info = response.json()
 
     if import_from_settings('OIDC_AUTO_REFRESH_TOKENS', False):
-        LOGGER.debug('storing refresh tokens' + str([token_info.get('refresh_expires_in'),token_info.get('expires_in')]))
+        LOGGER.debug('storing refresh tokens' + str([token_info.get('refresh_expires_in'), token_info.get('expires_in')]))
+        expiration_interval = import_from_settings('OIDC_RENEW_ID_TOKEN_EXPIRY_SECONDS', 60 * 15)
+        session['oidc_id_token_expiration'] = time.time() + expiration_interval
         session['oidc_refresh_token'] = token_info.get('refresh_token')
         session['oidc_refresh_token_expiration'] = math.floor(time.time() + token_info.get('refresh_expires_in'))
         session['oidc_access_token_expiration'] = math.floor(time.time() + token_info.get('expires_in'))
@@ -120,3 +75,5 @@ def store_tokens(session, token_info):
 
     if import_from_settings('OIDC_STORE_ID_TOKEN', False):
         session['oidc_id_token'] = token_info.get('id_token')
+
+    return token_info
