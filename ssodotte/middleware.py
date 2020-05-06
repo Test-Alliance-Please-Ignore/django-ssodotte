@@ -5,10 +5,7 @@ from django.contrib.auth import BACKEND_SESSION_KEY
 from django.utils.module_loading import import_string
 from mozilla_django_oidc.auth import OIDCAuthenticationBackend
 from mozilla_django_oidc.middleware import SessionRefresh
-from mozilla_django_oidc.utils import (
-    import_from_settings,
-    is_authenticated
-)
+from mozilla_django_oidc.utils import import_from_settings, is_authenticated
 
 from sentinel import auth
 
@@ -40,42 +37,58 @@ class TokenRefresh(SessionRefresh):
             is_oidc_enabled = issubclass(auth_backend, OIDCAuthenticationBackend)
 
         return (
-                # unlike SessionRefresh, don't check request method
-                is_authenticated(request.user) and
-                is_oidc_enabled and
-                request.path not in self.exempt_urls
+            # unlike SessionRefresh, don't check request method
+            is_authenticated(request.user)
+            and is_oidc_enabled
+            and request.path not in self.exempt_urls
         )
 
     def process_request(self, request):
         if not self.is_refreshable_url(request):
-            LOGGER.debug('request is not refreshable')
+            LOGGER.debug("request is not refreshable")
             return
 
-        LOGGER.debug('checking tokens')
+        LOGGER.debug("checking tokens")
         now = time.time() + 15  # add 15s, so we don't expire while making a call
-        refresh_token_expiration = request.session.get('oidc_refresh_token_expiration', 0)
-        access_token_expiration = request.session.get('oidc_access_token_expiration', 0)
-        id_token_expiration = request.session.get('oidc_id_token_expiration', 0)
+        refresh_token_expiration = request.session.get(
+            "oidc_refresh_token_expiration", 0
+        )
+        access_token_expiration = request.session.get("oidc_access_token_expiration", 0)
+        id_token_expiration = request.session.get("oidc_id_token_expiration", 0)
 
-        if import_from_settings('OIDC_AUTO_REFRESH_TOKENS', False) \
-                and refresh_token_expiration > now \
-                and (access_token_expiration < now or id_token_expiration < now):
+        if (
+            import_from_settings("OIDC_AUTO_REFRESH_TOKENS", False)
+            and refresh_token_expiration > now
+            and (access_token_expiration < now or id_token_expiration < now)
+        ):
             # try to refresh expired tokens with refresh token
 
-            LOGGER.debug('tokens invalid, refreshing tokens, %s', [
-                access_token_expiration - now, id_token_expiration - now, refresh_token_expiration - now
-            ])
+            LOGGER.debug(
+                "tokens invalid, refreshing tokens, %s",
+                [
+                    access_token_expiration - now,
+                    id_token_expiration - now,
+                    refresh_token_expiration - now,
+                ],
+            )
 
             token_payload = {
-                'grant_type': 'refresh_token',
-                'refresh_token': request.session['oidc_refresh_token'],
-                'client_id': import_from_settings('OIDC_RP_CLIENT_ID'),
-                'client_secret': import_from_settings('OIDC_RP_CLIENT_SECRET'),
+                "grant_type": "refresh_token",
+                "refresh_token": request.session["oidc_refresh_token"],
+                "client_id": import_from_settings("OIDC_RP_CLIENT_ID"),
+                "client_secret": import_from_settings("OIDC_RP_CLIENT_SECRET"),
             }
-            auth.get_tokens(request.session, token_payload)  # also stores the new tokens, no need to do anything else
+            auth.get_tokens(
+                request.session, token_payload
+            )  # also stores the new tokens, no need to do anything else
 
         else:
             # The id_token is still valid, so we don't have to do anything.
             # ID token will expire before refresh token, so no need to check for that
-            LOGGER.debug('tokens are still valid, not auto refreshing, (%s, %s, %s > %s)',
-                         refresh_token_expiration, id_token_expiration, access_token_expiration, now)
+            LOGGER.debug(
+                "tokens are still valid, not auto refreshing, (%s, %s, %s > %s)",
+                refresh_token_expiration,
+                id_token_expiration,
+                access_token_expiration,
+                now,
+            )
