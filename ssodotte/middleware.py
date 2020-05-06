@@ -22,7 +22,8 @@ class TokenRefresh(SessionRefresh):
     """
 
     def is_refreshable_url(self, request):
-        """Takes a request and returns whether it triggers a refresh examination
+        """
+        Takes a request and returns whether it triggers a refresh examination
 
         :arg HttpRequest request:
 

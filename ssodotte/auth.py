@@ -21,7 +21,9 @@ class SsodotteBackend(OIDCAuthenticationBackend):
         return self.UserModel.objects.filter(username=sub_id)
 
     def verify_claims(self, claims):
-        """Verify the provided claims to decide if authentication should be allowed."""
+        """
+        Verify the provided claims to decide if authentication should be allowed.
+        """
         return "sub" in claims
 
     def create_user(self, claims):
@@ -43,7 +45,9 @@ class SsodotteBackend(OIDCAuthenticationBackend):
 
 
 def get_tokens(session, payload):
-    """Return token object as a dictionary."""
+    """
+    Return token object as a dictionary.
+    """
 
     auth = None
     if import_from_settings("OIDC_TOKEN_USE_BASIC_AUTH", False):
