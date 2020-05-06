@@ -150,9 +150,9 @@ without redirecting users. To use these middleware, simply add them to the djang
         # ...
     ]
 
-Other important settings, only `OIDC_AUTO_REFRESH_TOKENS` is unique to ssodotte:
+Other important settings, only `OIDC_STORE_REFRESH_TOKENS` is unique to ssodotte:
 
     OIDC_STORE_ACCESS_TOKEN = True
     OIDC_RENEW_ID_TOKEN_EXPIRY_SECONDS = 15 * 60  # expiry for ID tokens, used in both middleware
     OIDC_EXEMPT_URLS = []  # URLs exempt from both middleware
-    OIDC_AUTO_REFRESH_TOKENS = True  # Required for TokenRefresh to function, enables saving refresh token and token expiries
+    OIDC_STORE_REFRESH_TOKENS = True  # Required for TokenRefresh to function, enables saving refresh token and token expiries

@@ -67,7 +67,7 @@ def get_tokens(session, payload):
     response.raise_for_status()
     token_info = response.json()
 
-    if import_from_settings("OIDC_AUTO_REFRESH_TOKENS", False):
+    if import_from_settings("OIDC_STORE_REFRESH_TOKENS", False):
         LOGGER.debug(
             "storing refresh tokens"
             + str([token_info.get("refresh_expires_in"), token_info.get("expires_in")])

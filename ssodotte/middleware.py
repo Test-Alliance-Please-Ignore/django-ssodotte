@@ -58,7 +58,7 @@ class TokenRefresh(SessionRefresh):
         id_token_expiration = request.session.get("oidc_id_token_expiration", 0)
 
         if (
-            import_from_settings("OIDC_AUTO_REFRESH_TOKENS", False)
+            import_from_settings("OIDC_STORE_REFRESH_TOKENS", False)
             and refresh_token_expiration > now
             and (access_token_expiration < now or id_token_expiration < now)
         ):
