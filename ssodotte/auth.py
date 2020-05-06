@@ -41,50 +41,29 @@ class SsodotteBackend(OIDCAuthenticationBackend):
         )
 
     def get_token(self, payload):
-        return get_tokens(self.request.session, payload)
+        """
+        Return token object as a dictionary.
+        """
+        token_info = super(SsodotteBackend, self).get_token(payload)
 
+        if import_from_settings("OIDC_STORE_REFRESH_TOKENS", False):
+            LOGGER.debug(
+                "storing refresh tokens, %s",
+                [token_info.get("refresh_expires_in"), token_info.get("expires_in")],
+            )
+            session["oidc_refresh_token"] = token_info.get("refresh_token")
+            session["oidc_refresh_token_expiration"] = math.floor(
+                time.time() + token_info.get("refresh_expires_in")
+            )
+            session["oidc_access_token_expiration"] = math.floor(
+                time.time() + token_info.get("expires_in")
+            )
+            LOGGER.debug("tokens stored, " + str(session.keys()))
 
-def get_tokens(session, payload):
-    """
-    Return token object as a dictionary.
-    """
+        if import_from_settings("OIDC_STORE_ACCESS_TOKEN", False):
+            session["oidc_access_token"] = token_info.get("access_token")
 
-    auth = None
-    if import_from_settings("OIDC_TOKEN_USE_BASIC_AUTH", False):
-        # When Basic auth is defined, create the Auth Header and remove secret from payload.
-        user = payload.get("client_id")
-        pw = payload.get("client_secret")
+        if import_from_settings("OIDC_STORE_ID_TOKEN", False):
+            session["oidc_id_token"] = token_info.get("id_token")
 
-        auth = HTTPBasicAuth(user, pw)
-        del payload["client_secret"]
-
-    response = requests.post(
-        import_from_settings("OIDC_OP_TOKEN_ENDPOINT"),
-        data=payload,
-        auth=auth,
-        verify=import_from_settings("OIDC_VERIFY_SSL", True),
-    )
-    response.raise_for_status()
-    token_info = response.json()
-
-    if import_from_settings("OIDC_STORE_REFRESH_TOKENS", False):
-        LOGGER.debug(
-            "storing refresh tokens"
-            + str([token_info.get("refresh_expires_in"), token_info.get("expires_in")])
-        )
-        session["oidc_refresh_token"] = token_info.get("refresh_token")
-        session["oidc_refresh_token_expiration"] = math.floor(
-            time.time() + token_info.get("refresh_expires_in")
-        )
-        session["oidc_access_token_expiration"] = math.floor(
-            time.time() + token_info.get("expires_in")
-        )
-        LOGGER.debug("tokens stored, " + str(session.keys()))
-
-    if import_from_settings("OIDC_STORE_ACCESS_TOKEN", False):
-        session["oidc_access_token"] = token_info.get("access_token")
-
-    if import_from_settings("OIDC_STORE_ID_TOKEN", False):
-        session["oidc_id_token"] = token_info.get("id_token")
-
-    return token_info
+        return token_info

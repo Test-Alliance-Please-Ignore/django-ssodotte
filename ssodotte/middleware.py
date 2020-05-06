@@ -7,7 +7,6 @@ from mozilla_django_oidc.auth import OIDCAuthenticationBackend
 from mozilla_django_oidc.middleware import SessionRefresh
 from mozilla_django_oidc.utils import import_from_settings, is_authenticated
 
-from sentinel import auth
 
 LOGGER = logging.getLogger(__name__)
 
@@ -20,6 +19,8 @@ class TokenRefresh(SessionRefresh):
     if not, refresh tokens without user interruption.
 
     """
+
+    auth_backend = None
 
     def is_refreshable_url(self, request):
         """
@@ -34,8 +35,8 @@ class TokenRefresh(SessionRefresh):
         backend_session = request.session.get(BACKEND_SESSION_KEY)
         is_oidc_enabled = False
         if backend_session:
-            auth_backend = import_string(backend_session)
-            is_oidc_enabled = issubclass(auth_backend, OIDCAuthenticationBackend)
+            self.auth_backend = import_string(backend_session)
+            is_oidc_enabled = issubclass(self.auth_backend, OIDCAuthenticationBackend)
 
         return (
             # unlike SessionRefresh, don't check request method
@@ -74,6 +75,8 @@ class TokenRefresh(SessionRefresh):
             }
 
             # also stores the new tokens, no need to do anything else
+            # need to instantiate the backend first
+            auth = self.auth_backend()
             auth.get_tokens(request.session, token_payload)
 
         else:
