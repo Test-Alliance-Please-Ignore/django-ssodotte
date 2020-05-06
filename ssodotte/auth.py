@@ -72,10 +72,6 @@ def get_tokens(session, payload):
             "storing refresh tokens"
             + str([token_info.get("refresh_expires_in"), token_info.get("expires_in")])
         )
-        expiration_interval = import_from_settings(
-            "OIDC_RENEW_ID_TOKEN_EXPIRY_SECONDS", 60 * 15
-        )
-        session["oidc_id_token_expiration"] = time.time() + expiration_interval
         session["oidc_refresh_token"] = token_info.get("refresh_token")
         session["oidc_refresh_token_expiration"] = math.floor(
             time.time() + token_info.get("refresh_expires_in")
