@@ -63,7 +63,4 @@ class SsodotteBackend(OIDCAuthenticationBackend):
         if import_from_settings("OIDC_STORE_ACCESS_TOKEN", False):
             session["oidc_access_token"] = token_info.get("access_token")
 
-        if import_from_settings("OIDC_STORE_ID_TOKEN", False):
-            session["oidc_id_token"] = token_info.get("id_token")
-
         return token_info
