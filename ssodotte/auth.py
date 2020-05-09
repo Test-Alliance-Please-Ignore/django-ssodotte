@@ -46,6 +46,8 @@ class SsodotteBackend(OIDCAuthenticationBackend):
         """
         token_info = super(SsodotteBackend, self).get_token(payload)
 
+        session = self.request.session
+
         if import_from_settings("OIDC_STORE_REFRESH_TOKENS", False):
             LOGGER.debug(
                 "storing refresh tokens, %s",
