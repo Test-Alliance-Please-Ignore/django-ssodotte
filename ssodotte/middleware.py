@@ -11,7 +11,7 @@ from mozilla_django_oidc.utils import import_from_settings, is_authenticated
 LOGGER = logging.getLogger(__name__)
 
 
-class TokenRefresh(SessionRefresh):
+class TokenRefreshMiddleware(SessionRefresh):
     """
     Refreshes access and ID tokens after expiration.
 

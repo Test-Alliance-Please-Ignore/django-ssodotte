@@ -139,13 +139,13 @@ you requested your client.
 #### SessionRefresh and refreshing tokens
 
 In addition to [SessionRefresh](https://mozilla-django-oidc.readthedocs.io/en/stable/installation.html#validate-id-tokens-by-renewing-them),
-included in mozilla-oidc, `TokenRefresh` is included in this to refresh tokens within requests when they expire,
+included in mozilla-oidc, `TokenRefreshMiddleware` is included in this to refresh tokens within requests when they expire,
 without redirecting users. To use these middleware, simply add them to the django settings:
 
     MIDDLEWARE += [
         # middleware involving session and authentication must come first
         # ...
-        'ssodotte.middleware.TokenRefresh',
+        'ssodotte.middleware.TokenRefreshMiddleware',
         'mozilla_django_oidc.middleware.SessionRefresh'  # add this after token refresh, otherwise you may redirect your users
         # ...
     ]
@@ -155,4 +155,4 @@ Other important settings, only `OIDC_STORE_REFRESH_TOKENS` is unique to ssodotte
     OIDC_STORE_ACCESS_TOKEN = True
     OIDC_RENEW_ID_TOKEN_EXPIRY_SECONDS = 15 * 60  # expiry for ID tokens, used in both middleware
     OIDC_EXEMPT_URLS = []  # URLs exempt from both middleware
-    OIDC_STORE_REFRESH_TOKENS = True  # Required for TokenRefresh to function, enables saving refresh token and token expiries
+    OIDC_STORE_REFRESH_TOKENS = True  # Required for TokenRefreshMiddleware to function, enables saving refresh token and token expiries
