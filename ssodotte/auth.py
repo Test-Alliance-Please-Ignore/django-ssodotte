@@ -62,6 +62,7 @@ class SsodotteBackend(OIDCAuthenticationBackend):
             )
             LOGGER.debug("tokens stored, " + str(session.keys()))
 
+        # access tokens are stored in stored_tokens as well, but needs to be done here for TokenRefreshMiddleware
         if import_from_settings("OIDC_STORE_ACCESS_TOKEN", False):
             session["oidc_access_token"] = token_info.get("access_token")
 
