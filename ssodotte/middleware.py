@@ -76,7 +76,7 @@ class TokenRefreshMiddleware(SessionRefresh):
             # need to instantiate the backend first
             backend_session = request.session.get(BACKEND_SESSION_KEY)
             auth = import_string(backend_session)()
-            auth.get_tokens(request.session, token_payload)
+            auth.get_token(token_payload, request=request)
 
         else:
             # The access token is still valid, so we don't have to do anything.
