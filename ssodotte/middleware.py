@@ -1,11 +1,13 @@
 import logging
 import time
+import json
 
-from django.contrib.auth import BACKEND_SESSION_KEY
-from django.utils.module_loading import import_string
+from django.contrib.auth import BACKEND_SESSION_KEY, load_backend, logout, login
+from django.core.exceptions import SuspiciousOperation
 from mozilla_django_oidc.auth import OIDCAuthenticationBackend
 from mozilla_django_oidc.middleware import SessionRefresh
 from mozilla_django_oidc.utils import import_from_settings, is_authenticated
+from josepy.b64 import b64decode
 
 
 LOGGER = logging.getLogger(__name__)
@@ -20,7 +22,13 @@ class TokenRefreshMiddleware(SessionRefresh):
 
     """
 
-    def is_refreshable_url(self, request):
+    def get_backend_instance(self, backend_path):
+        if not backend_path:
+            return None
+
+        return load_backend(backend_path)
+
+    def is_refreshable_url(self, request, backend):
         """
         Takes a request and returns whether it triggers a refresh examination
 
@@ -30,21 +38,28 @@ class TokenRefreshMiddleware(SessionRefresh):
 
         """
         # Do not attempt to refresh the session if the OIDC backend is not used
-        backend_session = request.session.get(BACKEND_SESSION_KEY)
-        is_oidc_enabled = False
-        if backend_session:
-            auth_backend = import_string(backend_session)
-            is_oidc_enabled = issubclass(auth_backend, OIDCAuthenticationBackend)
+        if not isinstance(backend, OIDCAuthenticationBackend):
+            return False
 
         return (
             # unlike SessionRefresh, don't check request method
             is_authenticated(request.user)
-            and is_oidc_enabled
             and request.path not in self.exempt_urls
         )
 
+    def get_jwt_payload_no_validation(self, token):
+        payload_data = token.split(".")[1]
+        return json.loads(b64decode(payload_data))
+
     def process_request(self, request):
-        if not self.is_refreshable_url(request):
+        if not import_from_settings("OIDC_STORE_REFRESH_TOKENS", False):
+            LOGGER.debug("OIDC_STORE_REFRESH_TOKENS isn't on")
+            return
+
+        backend_path = request.session.get(BACKEND_SESSION_KEY)
+        backend = self.get_backend_instance(backend_path)
+
+        if not self.is_refreshable_url(request, backend):
             LOGGER.debug("request is not refreshable")
             return
 
@@ -55,14 +70,16 @@ class TokenRefreshMiddleware(SessionRefresh):
         )
         access_token_expiration = request.session.get("oidc_access_token_expiration", 0)
 
-        if (
-            import_from_settings("OIDC_STORE_REFRESH_TOKENS", False)
-            and access_token_expiration < now < refresh_token_expiration
-        ):
-            # try to refresh expired tokens with refresh token
+        # Log the user out if the refresh token is expired (we can't refresh
+        # their token)
+        if now >= refresh_token_expiration:
+            logout(request)
+
+        if access_token_expiration < now < refresh_token_expiration:
+            # try to refresh expired access token with refresh token
             LOGGER.debug(
-                "tokens invalid, refreshing tokens, %s",
-                [access_token_expiration - now, refresh_token_expiration - now,],
+                "access token expired, refreshing. token expiries: %s",
+                [access_token_expiration - now, refresh_token_expiration - now],
             )
 
             token_payload = {
@@ -72,12 +89,34 @@ class TokenRefreshMiddleware(SessionRefresh):
                 "client_secret": import_from_settings("OIDC_RP_CLIENT_SECRET"),
             }
 
-            # also stores the new tokens, no need to do anything else
-            # need to instantiate the backend first
-            backend_session = request.session.get(BACKEND_SESSION_KEY)
-            auth = import_string(backend_session)()
-            auth.get_token(token_payload, request=request)
+            # Call the OIDCAuthenticationBackend to get/store the new tokens
+            # and validate access
+            backend.request = request
+            token_info = backend.get_token(token_payload)
+            id_token = token_info.get("id_token")
+            access_token = token_info.get("access_token")
 
+            # We can't actually check the nonce here (it's the same as the one
+            # used on initial login), so just fetch the nonce in the token and
+            # cause the comparison to be a no-op
+            nonce = self.get_jwt_payload_no_validation(id_token).get("nonce")
+            payload = backend.verify_token(id_token, nonce=nonce)
+
+            user = None
+            if payload:
+                backend.store_tokens(access_token, id_token)
+                try:
+                    user = backend.get_or_create_user(access_token, id_token, payload)
+                except SuspiciousOperation:
+                    LOGGER.warning(
+                        "Could not get or create user during token refresh",
+                        exc_info=True,
+                    )
+
+            if not user:
+                logout(request)
+            else:
+                login(request, user, backend_path)
         else:
             # The access token is still valid, so we don't have to do anything.
             LOGGER.debug(
