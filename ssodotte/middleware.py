@@ -2,6 +2,7 @@ import logging
 import time
 import json
 
+from requests import RequestException
 from django.contrib.auth import BACKEND_SESSION_KEY, load_backend, logout, login
 from django.core.exceptions import SuspiciousOperation
 from mozilla_django_oidc.auth import OIDCAuthenticationBackend
@@ -92,7 +93,12 @@ class TokenRefreshMiddleware(SessionRefresh):
             # Call the OIDCAuthenticationBackend to get/store the new tokens
             # and validate access
             backend.request = request
-            token_info = backend.get_token(token_payload)
+            try:
+                token_info = backend.get_token(token_payload)
+            except RequestException:
+                LOGGER.warning("Could not refresh token", exc_info=True)
+                logout(request)
+
             id_token = token_info.get("id_token")
             access_token = token_info.get("access_token")
 
