@@ -113,10 +113,8 @@ class TokenRefreshMiddleware(SessionRefresh):
                         exc_info=True,
                     )
 
-            if not user:
+            if not user or request.user.id != user.id:
                 logout(request)
-            else:
-                login(request, user, backend_path)
         else:
             # The access token is still valid, so we don't have to do anything.
             LOGGER.debug(
