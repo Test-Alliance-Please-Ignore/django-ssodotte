@@ -52,6 +52,21 @@ class TokenRefreshMiddleware(SessionRefresh):
         payload_data = token.split(".")[1]
         return json.loads(b64decode(payload_data))
 
+    def logout(self, request):
+        """Remove OIDC session variables and log out user."""
+        logout(request)
+        for variable in [
+            "oidc_refresh_token",
+            "oidc_refresh_token_expiration",
+            "oidc_access_token_expiration",
+            "oidc_access_token",
+            "oidc_id_token",
+        ]:
+            try:
+                del request.session[variable]
+            except KeyError:
+                pass
+
     def process_request(self, request):
         if not import_from_settings("OIDC_STORE_REFRESH_TOKENS", False):
             LOGGER.debug("OIDC_STORE_REFRESH_TOKENS isn't on")
@@ -74,7 +89,7 @@ class TokenRefreshMiddleware(SessionRefresh):
         # Log the user out if the refresh token is expired (we can't refresh
         # their token)
         if now >= refresh_token_expiration:
-            logout(request)
+            self.logout(request)
             return
 
         if access_token_expiration < now < refresh_token_expiration:
@@ -98,7 +113,7 @@ class TokenRefreshMiddleware(SessionRefresh):
                 token_info = backend.get_token(token_payload)
             except RequestException:
                 LOGGER.warning("Could not refresh token", exc_info=True)
-                logout(request)
+                self.logout(request)
                 return
 
             id_token = token_info.get("id_token")
@@ -122,7 +137,7 @@ class TokenRefreshMiddleware(SessionRefresh):
                     )
 
             if not user or request.user.id != user.id:
-                logout(request)
+                self.logout(request)
         else:
             # The access token is still valid, so we don't have to do anything.
             LOGGER.debug(
