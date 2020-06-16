@@ -1,8 +1,14 @@
-OIDC_OP_AUTHORIZATION_ENDPOINT = "https://sso.pleaseignore.com/auth/realms/auth-ng/protocol/openid-connect/auth"
-OIDC_OP_TOKEN_ENDPOINT = "https://sso.pleaseignore.com/auth/realms/auth-ng/protocol/openid-connect/token"
-OIDC_OP_USER_ENDPOINT = "https://sso.pleaseignore.com/auth/realms/auth-ng/protocol/openid-connect/userinfo"
+OIDC_OP_AUTHORIZATION_ENDPOINT = (
+    "https://sso.pleaseignore.com/auth/realms/auth-ng/protocol/openid-connect/auth"
+)
+OIDC_OP_TOKEN_ENDPOINT = (
+    "https://sso.pleaseignore.com/auth/realms/auth-ng/protocol/openid-connect/token"
+)
+OIDC_OP_USER_ENDPOINT = (
+    "https://sso.pleaseignore.com/auth/realms/auth-ng/protocol/openid-connect/userinfo"
+)
 
-OIDC_RP_SIGN_ALGO = 'RS256'
+OIDC_RP_SIGN_ALGO = "RS256"
 
 OIDC_RP_SCOPES = "openid"
 
