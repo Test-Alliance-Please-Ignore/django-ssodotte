@@ -75,6 +75,7 @@ class TokenRefreshMiddleware(SessionRefresh):
         # their token)
         if now >= refresh_token_expiration:
             logout(request)
+            return
 
         if access_token_expiration < now < refresh_token_expiration:
             # try to refresh expired access token with refresh token
@@ -98,6 +99,7 @@ class TokenRefreshMiddleware(SessionRefresh):
             except RequestException:
                 LOGGER.warning("Could not refresh token", exc_info=True)
                 logout(request)
+                return
 
             id_token = token_info.get("id_token")
             access_token = token_info.get("access_token")
